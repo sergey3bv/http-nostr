@@ -19,7 +19,6 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/labstack/echo/v4"
-	"github.com/nbd-wtf/go-nostr"
 	"github.com/sirupsen/logrus"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -478,7 +477,7 @@ func (svc *Service) prepareNIP47Subscription(relayUrl, walletPubkey, webhookUrl 
 		Open:         true,
 		Authors:      &[]string{walletPubkey},
 		Kinds:        &[]int{NIP_47_RESPONSE_KIND},
-		Tags:         &nostr.TagMap{"e": []string{requestEvent.NostrId}},
+		Tags:         map[string][]string{"e": []string{requestEvent.NostrId}},
 		Since:        time.Now(),
 		Limit:        1,
 		RequestEvent: requestEvent,
@@ -537,10 +536,9 @@ func (svc *Service) NIP47NotificationHandler(c echo.Context) error {
 		subscription.Kinds = &[]int{NIP_47_NOTIFICATION_KIND}
 	}
 
-	tags := make(nostr.TagMap)
+	tags := make(map[string][]string, 1)
 	tags["p"] = []string{requestData.ConnPubkey}
-
-	subscription.Tags = &tags
+	subscription.Tags = tags
 
 	err := svc.db.Create(&subscription).Error
 
@@ -599,7 +597,7 @@ func (svc *Service) SubscriptionHandler(c echo.Context) error {
 		Ids:        &requestData.Filter.IDs,
 		Authors:    &requestData.Filter.Authors,
 		Kinds:      &requestData.Filter.Kinds,
-		Tags:       &requestData.Filter.Tags,
+		Tags:       requestData.Filter.Tags,
 		Limit:      requestData.Filter.Limit,
 		Search:     requestData.Filter.Search,
 	}
@@ -790,7 +788,7 @@ func (svc *Service) publishRequestEvent(ctx context.Context, subscription *Subsc
 			"client_pubkey":    clientPubkey,
 		}).Error("Failed to publish to relay")
 		subscription.RequestEvent.State = REQUEST_EVENT_PUBLISH_FAILED
-		relaySubscription.Unsub()
+		subscription.RelaySubscription.Unsub()
 	} else {
 		svc.Logger.WithFields(logrus.Fields{
 			"subscription_id":  subscription.Uuid,
@@ -938,10 +936,10 @@ func (svc *Service) subscriptionToFilter(subscription *Subscription) *nostr2.Fil
 		filter.Authors = *subscription.Authors
 	}
 	if subscription.Tags != nil {
-		filter.Tags = *subscription.Tags
+		filter.Tags = subscription.Tags
 	}
 	if !subscription.Since.IsZero() {
-		since := nostr.Timestamp(subscription.Since.Unix())
+		since := subscription.Since.Unix()
 		filter.Since = &since
 	}
 	if !subscription.Until.IsZero() {
@@ -956,18 +954,24 @@ func getPubkeys(subscription *Subscription) (string, string) {
 	clientPubkey := ""
 
 	if subscription.RequestEvent != nil {
-		walletPubkey = getWalletPubkey(&subscription.RequestEvent.SignedEvent.Tags)
+		walletPubkey = getWalletPubkey(subscription.RequestEvent.SignedEvent.Tags)
 		clientPubkey = subscription.RequestEvent.SignedEvent.PubKey
 	}
 
 	return walletPubkey, clientPubkey
 }
 
-func getWalletPubkey(tags *nostr.Tags) string {
-	pTag := tags.GetFirst([]string{"p", ""})
+func getWalletPubkey(tags [][]string) string {
+	tagPrefix := "p"
+
+	for _, v := range tags {
+		if v.StartsWith(tagPrefix) {
+			return &v
+		}
+	}
+
 	if pTag != nil {
 		return pTag.Value()
 	}
 	return ""
 }
-
