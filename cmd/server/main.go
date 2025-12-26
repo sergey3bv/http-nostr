@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"http-nostr/internal/nostr"
+	"http-nostr/internal/service"
 
 	echologrus "github.com/davrux/echo-logrus/v4"
 	"github.com/getsentry/sentry-go"
@@ -20,7 +20,7 @@ import (
 
 func main() {
 	ctx := context.Background()
-	svc, err := nostr.NewService(ctx)
+	svc, err := service.NewService(ctx)
 	if err != nil {
 		logrus.Fatalf("Failed to initialize service: %v", err)
 	}
@@ -68,9 +68,6 @@ func main() {
 	defer cancel()
 	e.Shutdown(ctx)
 	svc.Logger.Info("Echo server exited")
-	svc.Relay.Close()
-	svc.Logger.Info("Relay connection closed")
-	svc.Logger.Info("Waiting for service to exit...")
 	svc.Wg.Wait()
 	svc.Logger.Info("Service exited")
 }
