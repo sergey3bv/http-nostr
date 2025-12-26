@@ -6,7 +6,6 @@ import (
 	"http-nostr/internal/nostr2"
 	"time"
 
-	"github.com/nbd-wtf/go-nostr"
 	"gorm.io/gorm"
 )
 
@@ -36,22 +35,22 @@ type Subscription struct {
 	Ids               *[]string           `gorm:"-"`
 	Kinds             *[]int              `gorm:"-"`
 	Authors           *[]string           `gorm:"-"` // WalletPubkey is included in this
-	Tags              *nostr.TagMap       `gorm:"-"` // RequestEvent ID goes in the "e" tag
+	Tags              map[string][]string `gorm:"-"` // RequestEvent ID goes in the "e" tag
 	Since             time.Time
 	Until             time.Time
 	Limit             int
 	Search            string
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
-	Uuid              string              `gorm:"type:uuid;default:gen_random_uuid()"`
+	Uuid              string               `gorm:"type:uuid;default:gen_random_uuid()"`
 	EventChan         chan *nostr2.Event   `gorm:"-"`
-	RequestEvent      *RequestEvent       `gorm:"-"`
+	RequestEvent      *RequestEvent        `gorm:"-"`
 	RelaySubscription *nostr2.Subscription `gorm:"-"`
 
-	IdsJson           json.RawMessage     `gorm:"type:jsonb"`
-	KindsJson         json.RawMessage     `gorm:"type:jsonb"`
-	AuthorsJson       json.RawMessage     `gorm:"type:jsonb"`
-	TagsJson          json.RawMessage     `gorm:"type:jsonb"`
+	IdsJson     json.RawMessage `gorm:"type:jsonb"`
+	KindsJson   json.RawMessage `gorm:"type:jsonb"`
+	AuthorsJson json.RawMessage `gorm:"type:jsonb"`
+	TagsJson    json.RawMessage `gorm:"type:jsonb"`
 }
 
 func (s *Subscription) BeforeSave(tx *gorm.DB) error {
@@ -119,7 +118,7 @@ type HandleEventFunc func(event *nostr2.Event, subscription *Subscription)
 type RequestEvent struct {
 	ID                 uint
 	SubscriptionId     *uint
-	NostrId            string       `validate:"required"`
+	NostrId            string `validate:"required"`
 	Content            string
 	State              string
 	ResponseReceivedAt time.Time
@@ -132,7 +131,7 @@ type ResponseEvent struct {
 	ID             uint
 	RequestId      *uint
 	SubscriptionId *uint
-	NostrId        string    `validate:"required"`
+	NostrId        string `validate:"required"`
 	Content        string
 	RepliedAt      time.Time
 	CreatedAt      time.Time
@@ -154,15 +153,15 @@ type InfoResponse struct {
 }
 
 type NIP47Request struct {
-	RelayUrl     string       `json:"relayUrl"`
-	WalletPubkey string       `json:"walletPubkey"`
+	RelayUrl     string        `json:"relayUrl"`
+	WalletPubkey string        `json:"walletPubkey"`
 	SignedEvent  *nostr2.Event `json:"event"`
 }
 
 type NIP47WebhookRequest struct {
-	RelayUrl     string       `json:"relayUrl"`
-	WalletPubkey string       `json:"walletPubkey"`
-	WebhookUrl   string       `json:"webhookUrl"`
+	RelayUrl     string        `json:"relayUrl"`
+	WalletPubkey string        `json:"walletPubkey"`
+	WebhookUrl   string        `json:"webhookUrl"`
 	SignedEvent  *nostr2.Event `json:"event"`
 }
 
@@ -184,12 +183,12 @@ type NIP47PushNotificationRequest struct {
 }
 
 type NIP47Response struct {
-	Event  *nostr2.Event `json:"event,omitempty"`
-	State  string       `json:"state"`
+	Event *nostr2.Event `json:"event,omitempty"`
+	State string        `json:"state"`
 }
 
 type PublishRequest struct {
-	RelayUrl    string       `json:"relayUrl"`
+	RelayUrl    string        `json:"relayUrl"`
 	SignedEvent *nostr2.Event `json:"event"`
 }
 
@@ -200,8 +199,8 @@ type PublishResponse struct {
 }
 
 type SubscriptionRequest struct {
-	RelayUrl   string        `json:"relayUrl"`
-	WebhookUrl string        `json:"webhookUrl"`
+	RelayUrl   string         `json:"relayUrl"`
+	WebhookUrl string         `json:"webhookUrl"`
 	Filter     *nostr2.Filter `json:"filter"`
 }
 
