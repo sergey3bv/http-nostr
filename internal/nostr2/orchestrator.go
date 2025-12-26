@@ -31,7 +31,7 @@ type RelayConfig struct {
 }
 
 // Constructs new orchestrator and starts goroutine to clean stale connections
-func NewRelayOrchestrator(conf RelayConfig) (relay RelayOrchestrator) {
+func NewRelayOrchestrator(ctx context.Context, conf RelayConfig) (relay RelayOrchestrator) {
 	if conf.MaximumIdle == 0 {
 		conf.MaximumIdle = 600 * time.Second
 	}
@@ -39,6 +39,8 @@ func NewRelayOrchestrator(conf RelayConfig) (relay RelayOrchestrator) {
 	relay = RelayOrchestrator{
 		Conf:   conf,
 		relays: xsync.NewMapOf[string, Relay](),
+		root:   ctx,
+		ticker: time.NewTicker(30 * time.Second),
 	}
 
 	go relay.cleanupRoutine()
